@@ -1,4 +1,4 @@
-# A Starter template for React & ASP.NET Core App in Azure
+# MediCore Cloud – Healthcare Ready Full Stack Platform                                                          
 
 Building a React & ASP.NET Core app and deploying to Azure is rather straight forward. However building one ready ready for production can become quite complicated because you might want to:
 
