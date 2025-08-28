@@ -1,0 +1,25 @@
+{
+  "appRoles": [
+    {
+      "allowedMemberTypes": ["User", "Application"],
+      "description": "Can manage items",
+      "displayName": "ItemManager",
+      "isEnabled": true,
+      "value": "ItemManager"
+    }
+  ],
+  "oauth2Permissions": [
+    {
+      "adminConsentDescription": "Starter App Read and Write",
+      "adminConsentDisplayName": "Starter App Read and Write",
+      "id": "",
+      "isEnabled": true,
+      "lang": null,
+      "origin": "Application",
+      "type": "User",
+      "userConsentDescription": null,
+      "userConsentDisplayName": null,
+      "value": "StarterApp.ReadWrite"
+    }
+  ]
+}

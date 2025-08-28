@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageAccountName": {
+      "type": "string"
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_ZRS",
+        "Premium_LRS"
+      ],
+      "metadata": {
+        "description": "Storage Account type"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "allowedOrigins": {
+      "type": "string",
+      "defaultValue": "*",
+      "metadata": {
+        "description": "Allowed origins for CORS"
+      }
+    },
+    "containerName": {
+      "type": "string",
+      "defaultValue": "items",
+      "metadata": {
+        "description": "Name of the container"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-04-01",
+      "name": "[parameters('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('storageAccountType')]"
+      },
+      "kind": "StorageV2",
+      "properties": {},
+      "resources": [
+        {
+          "name": "default",
+          "type": "blobServices",
+          "apiVersion": "2019-04-01",
+          "dependsOn": ["[parameters('storageAccountName')]"],
+          "properties": {
+            "cors": {
+              "corsRules": [
+                {
+                  "allowedOrigins": ["[parameters('allowedOrigins')]"],
+                  "allowedMethods": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+                  "maxAgeInSeconds": 200,
+                  "exposedHeaders": [
+                    "Accept-Ranges,Content-Encoding,Content-Length,Content-Type,Content-Range,*"
+                  ],
+                  "allowedHeaders": [
+                    "Accept-Ranges,Content-Encoding,Content-Length,Content-Type,Content-Range,*"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "blobServices/containers",
+          "apiVersion": "2019-04-01",
+          "name": "[concat('default/', parameters('containerName'))]",
+          "dependsOn": ["[parameters('storageAccountName')]"],
+          "properties": {
+            "publicAccess": "Blob"
+          }
+        }
+      ]
+    }
+  ]
+}

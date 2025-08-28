@@ -1,0 +1,96 @@
+name: Deploy Web App
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "src/Web/**"
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "src/Web/**"
+  workflow_dispatch:
+
+jobs:
+  deployWebApp:
+    name: Deploy Web App to Azure App Service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Github checkout
+        uses: actions/checkout@v2
+
+      - name: Get AAD Tenant ID, Subscription ID and Resource Group Name
+        uses: azure/CLI@v1
+        id: context
+        with:
+          azcliversion: 2.0.72
+          inlineScript: |
+            echo "::set-output name=subscriptionId::$(az account list --query [0].id --output tsv)"
+            echo "::set-output name=tenantId::$(az account list --query [0].tenantId --output tsv)"
+            echo "::set-output name=resourceGroupName::$(az group list --query [0].name --output tsv)"
+
+      - name: Get Azure resource names
+        id: resourceNames
+        uses: whiteducksoftware/azure-arm-action-js@v4
+        with:
+          scope: resourcegroup
+          subscriptionId: ${{ steps.context.outputs.subscriptionId }}
+          resourceGroupName: ${{ steps.context.outputs.resourceGroupName }}
+          templateLocation: "./src/Infrastructure/Cloud/Arm/resource-names.json"
+          parameters: appNamePrefix=${{ secrets.APP_NAME_PREFIX }}
+
+      #Update environment variable values in .env file
+      - name: Update Azure AD tenant id in the environment file
+        uses: jacobtomlinson/gha-find-replace@master
+        with:
+          find: "__AadTenantId__"
+          replace: ${{ steps.context.outputs.tenantId }}
+          include: ".env"
+      - name: Update Azure AD client id the of the client app in the environment file
+        uses: jacobtomlinson/gha-find-replace@master
+        with:
+          find: "__AadClentAppClientId__"
+          replace: "https://${{ steps.resourceNames.outputs.webAppName}}.azurewebsites.net"
+          include: ".env"
+      - name: Update Azure AD client id of the api app in the environment file
+        uses: jacobtomlinson/gha-find-replace@master
+        with:
+          find: "__AadApiAppClientId__"
+          replace: "https://api.${{ steps.resourceNames.outputs.webAppName}}.azurewebsites.net"
+          include: ".env"
+      - name: Update storage account name in the environment file
+        uses: jacobtomlinson/gha-find-replace@master
+        with:
+          find: "__AzureStrgAcctName__"
+          replace: ${{ steps.resourceNames.outputs.storageAccountName }}
+          include: ".env"
+
+      #Setup, build and test app
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 3.1.301
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+      - name: Publish
+        run: dotnet publish --configuration Release -o reactdotnet
+        env:
+          CI: false
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          package: "./reactdotnet"
+          app-name: ${{ steps.resourceNames.outputs.webAppName}}
